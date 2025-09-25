@@ -5,6 +5,7 @@ import com.example.orderservice.dto.OrderResponse;
 import com.example.orderservice.dto.OrderUpdateStatusRequest;
 import com.example.orderservice.service.OrderService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,19 +17,21 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/orders")
+@RequiredArgsConstructor
 public class OrderController {
-    private final OrderService orderService;
 
-    public OrderController(OrderService orderService) { this.orderService = orderService; }
+    private final OrderService orderService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public OrderResponse create(@Valid @RequestBody OrderCreateRequest req, Authentication auth) {
-        return orderService.create(req, auth);
+    public OrderResponse create(@Valid @RequestBody OrderCreateRequest request, Authentication authentication) {
+        return orderService.create(request, authentication);
     }
 
     @GetMapping
-    public List<OrderResponse> my(Authentication auth) { return orderService.listMine(auth); }
+    public List<OrderResponse> my(Authentication authentication) {
+        return orderService.listMine(authentication);
+    }
 
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
@@ -39,11 +42,15 @@ public class OrderController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public OrderResponse update(@PathVariable UUID id, @Valid @RequestBody OrderUpdateStatusRequest req) {
-        return orderService.updateStatus(id, req);
+    public OrderResponse update(@PathVariable UUID id,
+                                @Valid @RequestBody OrderUpdateStatusRequest request) {
+        return orderService.updateStatus(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id, Authentication auth) { orderService.delete(id, auth); }
+    public void delete(@PathVariable UUID id, Authentication authentication) {
+        orderService.delete(id, authentication);
+    }
 }
+

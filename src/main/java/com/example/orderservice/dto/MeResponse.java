@@ -1,20 +1,16 @@
 package com.example.orderservice.dto;
 
 import com.example.orderservice.entity.Role;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 import java.util.UUID;
 
-@Getter
+@Data
+@AllArgsConstructor
 public class MeResponse {
-    private final UUID id;
-    private final String username;
-    private final Role role;
-
-    public MeResponse(UUID id, String username, Role role) {
-        this.id = id;
-        this.username = username;
-        this.role = role;
-    }
-
+    private UUID id;
+    private String username;
+    private Role role;
 }
+

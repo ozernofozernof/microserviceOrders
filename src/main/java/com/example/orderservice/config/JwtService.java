@@ -1,10 +1,15 @@
 package com.example.orderservice.config;
 
+import com.example.orderservice.security.JwtAuthenticationException;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -49,8 +54,8 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        String u = extractUsername(token);
+        return u.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
@@ -58,6 +63,23 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            throw new JwtAuthenticationException("JWT expired");
+        } catch (UnsupportedJwtException e) {
+            throw new JwtAuthenticationException("Unsupported JWT");
+        } catch (MalformedJwtException e) {
+            throw new JwtAuthenticationException("Malformed JWT");
+        } catch (SignatureException e) {
+            throw new JwtAuthenticationException("Invalid JWT signature");
+        } catch (IllegalArgumentException e) {
+            throw new JwtAuthenticationException("JWT token is empty or null");
+        }
     }
 }
+

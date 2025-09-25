@@ -1,16 +1,13 @@
 package com.example.orderservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Setter
-@Getter
+@Data
 public class AuthRequest {
-
     @NotBlank
     private String username;
     @NotBlank
     private String password;
-
 }
+
