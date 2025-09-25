@@ -1,12 +1,15 @@
 package com.example.orderservice.dto;
 
 import com.example.orderservice.entity.Role;
+import lombok.Getter;
+
 import java.util.UUID;
 
+@Getter
 public class MeResponse {
-    private UUID id;
-    private String username;
-    private Role role;
+    private final UUID id;
+    private final String username;
+    private final Role role;
 
     public MeResponse(UUID id, String username, Role role) {
         this.id = id;
@@ -14,15 +17,4 @@ public class MeResponse {
         this.role = role;
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public Role getRole() {
-        return role;
-    }
 }
