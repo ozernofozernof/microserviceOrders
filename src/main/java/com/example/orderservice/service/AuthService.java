@@ -9,9 +9,11 @@ import com.example.orderservice.entity.User;
 import com.example.orderservice.error.ResourceAlreadyExistsException;
 import com.example.orderservice.error.ResourceNotFoundException;
 import com.example.orderservice.repository.UserRepository;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -37,12 +39,46 @@ public class AuthService {
 
     public AuthResponse login(AuthRequest request) {
         authManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
-        User user = userRepository.findByUsername(request.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        String token = jwtService.generateToken(new org.springframework.security.core.userdetails.User(
-                user.getUsername(), user.getPassword(),
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                user.getUsername(),
+                user.getPassword(),
                 java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-        ));
-        return new AuthResponse(token);
+        );
+
+        String accessToken = jwtService.generateAccessToken(userDetails);
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
+
+        return new AuthResponse(accessToken, refreshToken);
+    }
+
+    public AuthResponse refreshTokens(String refreshToken) {
+        try {
+            final String username = jwtService.extractUsername(refreshToken, true);
+
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+            UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                    user.getUsername(),
+                    user.getPassword(),
+                    java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+            );
+
+            if (!jwtService.isTokenValid(refreshToken, userDetails, true)) {
+                throw new RuntimeException("Invalid refresh token");
+            }
+
+            String newAccessToken = jwtService.generateAccessToken(userDetails);
+            String newRefreshToken = jwtService.generateRefreshToken(userDetails);
+
+            return new AuthResponse(newAccessToken, newRefreshToken);
+
+        } catch (JwtException e) {
+            throw new RuntimeException("Invalid refresh token");
+        }
     }
 }
 

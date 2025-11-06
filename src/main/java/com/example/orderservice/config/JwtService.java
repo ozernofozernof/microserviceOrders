@@ -20,8 +20,15 @@ import java.util.Map;
 
 @Service
 public class JwtService {
+
     private final Key key;
     private final long expirationMs;
+
+    @Value("${app.jwt.refresh-secret:default-refresh-secret}")
+    private String refreshSecret;
+
+    @Value("${app.jwt.refresh-expiration:604800000}")
+    private long refreshExpirationMs;
 
     public JwtService(@Value("${app.jwt.secret}") String secret,
                       @Value("${app.jwt.expiration}") long expirationMs) {
@@ -30,42 +37,56 @@ public class JwtService {
         this.expirationMs = expirationMs;
     }
 
-    private String toBase64IfNeeded(String s) {
-        try {
-            Decoders.BASE64.decode(s);
-            return s;
-        } catch (Exception e) {
-            return java.util.Base64.getEncoder().encodeToString(s.getBytes());
-        }
+    public String generateAccessToken(UserDetails userDetails) {
+        return generateToken(userDetails);
     }
 
-    public String extractUsername(String token) {
-        return extractAllClaims(token).getSubject();
+    public String generateRefreshToken(UserDetails userDetails) {
+        Key refreshKey = getRefreshKey();
+        return Jwts.builder()
+                .setClaims(Map.of())
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
+                .signWith(refreshKey, SignatureAlgorithm.HS256)
+                .compact();
     }
 
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
                 .setClaims(Map.of())
                 .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        String u = extractUsername(token);
-        return u.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        return isTokenValid(token, userDetails, false);
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractAllClaims(token).getExpiration().before(new Date());
+    public boolean isTokenValid(String token, UserDetails userDetails, boolean isRefresh) {
+        String username = extractUsername(token, isRefresh);
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token, isRefresh);
     }
 
-    private Claims extractAllClaims(String token) {
+    public String extractUsername(String token) {
+        return extractUsername(token, false);
+    }
+
+    public String extractUsername(String token, boolean isRefresh) {
+        return extractAllClaims(token, isRefresh).getSubject();
+    }
+
+    private boolean isTokenExpired(String token, boolean isRefresh) {
+        return extractAllClaims(token, isRefresh).getExpiration().before(new Date());
+    }
+
+    private Claims extractAllClaims(String token, boolean isRefresh) {
         try {
             return Jwts.parserBuilder()
-                    .setSigningKey(key)
+                    .setSigningKey(isRefresh ? getRefreshKey() : key)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
@@ -79,6 +100,20 @@ public class JwtService {
             throw new JwtAuthenticationException("Invalid JWT signature");
         } catch (IllegalArgumentException e) {
             throw new JwtAuthenticationException("JWT token is empty or null");
+        }
+    }
+
+    private Key getRefreshKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(toBase64IfNeeded(refreshSecret));
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private String toBase64IfNeeded(String s) {
+        try {
+            Decoders.BASE64.decode(s);
+            return s;
+        } catch (Exception e) {
+            return java.util.Base64.getEncoder().encodeToString(s.getBytes());
         }
     }
 }

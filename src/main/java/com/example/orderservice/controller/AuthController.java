@@ -31,6 +31,11 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/refresh")
+    public AuthResponse refreshTokens(@RequestBody RefreshTokenRequest request) {
+        return authService.refreshTokens(request.getRefreshToken());
+    }
+
     @GetMapping("/me")
     public MeResponse me(@AuthenticationPrincipal UserDetails principal) {
         User user = userRepository.findByUsername(principal.getUsername())
