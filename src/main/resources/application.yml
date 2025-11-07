@@ -18,5 +18,7 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:please_change_me_please_change_me_please_}
-    expiration: ${JWT_EXPIRATION_MS:86400000} # 24h
+    secret: "my-super-long-secret-key-for-access-token-1234567890"
+    expiration: 900000
+    refresh-secret: "my-refresh-secret-key-for-refresh-token-0987654321"
+    refresh-expiration: 604800000

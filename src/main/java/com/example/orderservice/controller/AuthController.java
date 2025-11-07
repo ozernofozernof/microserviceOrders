@@ -2,9 +2,11 @@ package com.example.orderservice.controller;
 
 import com.example.orderservice.dto.*;
 import com.example.orderservice.entity.User;
+import com.example.orderservice.error.ResourceNotFoundException;
 import com.example.orderservice.repository.UserRepository;
 import com.example.orderservice.service.AuthService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,29 +14,34 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
     private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, UserRepository userRepository) {
-        this.authService = authService;
-        this.userRepository = userRepository;
-    }
-
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public void register(@Valid @RequestBody RegisterRequest req) {
-        authService.register(req);
+    public void register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody AuthRequest req) {
-        return authService.login(req);
+    public AuthResponse login(@Valid @RequestBody AuthRequest request) {
+        return authService.login(request);
+    }
+
+    @PostMapping("/refresh")
+    public AuthResponse refreshTokens(@RequestBody RefreshTokenRequest request) {
+        return authService.refreshTokens(request.getRefreshToken());
     }
 
     @GetMapping("/me")
     public MeResponse me(@AuthenticationPrincipal UserDetails principal) {
-        User u = userRepository.findByUsername(principal.getUsername()).orElseThrow();
-        return new MeResponse(u.getId(), u.getUsername(), u.getRole());
+        User user = userRepository.findByUsername(principal.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return new MeResponse(user.getId(), user.getUsername(), user.getRole());
     }
 }
+
+
